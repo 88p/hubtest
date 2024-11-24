@@ -1,0 +1,49 @@
+@startuml
+title Vehicle Initialization
+'PnC登録時の動き
+
+'分類子一覧
+box "Repository"
+    database    RCP as RCP
+    database    PCP as PCP
+    database    CCP as CCP
+end box
+participant WebhookService as WebhookService
+participant CPS as CPS
+participant MO as MO
+participant MOContractPKI as MOContractPKI
+participant CPO as CPO
+
+Actor       User as User
+
+box "OutCar"
+database    PnCサーバ as PnCサーバ
+database    SOA as SOA
+database    SVIS as SVIS
+participant App as App
+
+end box
+box "InCar"
+    participant DCM as DCM
+    participant CCU as CCU
+    participant CCU as CCU
+    participant CECU as CECU
+    participant EVCC as EVCC
+    participant 充制 as 充制
+    participant シス制 as シス制
+end box
+participant EVSE as EVSE
+
+
+'車両のCSRを受け取ったところから
+PnCサーバ -> PCP : 新しいOEMProv証明書をPCPへアップロード(addOEMProvCert)
+PCP -> WebhookService               : OEMProv証明書更新通知
+WebhookService -> MO                : OEMProv証明書更新通知
+PCP -> CCP                          : 契約証明書削除要求
+CCP -> CCP                          : 契約証明書削除
+CCP -> WebhookService               : 契約証明書削除通知
+note over CCP : OEMProvが更新されると契約証明書が削除される？
+WebhookService -> MO                : 契約証明書削除通知
+WebhookService -> PnCサーバ          : 契約証明書削除通知
+
+@enduml

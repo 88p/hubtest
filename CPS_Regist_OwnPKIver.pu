@@ -1,0 +1,90 @@
+@startuml
+title Contract generation using MO own PKI
+
+'分類子一覧
+box "Repository"
+    database    RCP as RCP
+    database    PCP as PCP
+    database    CCP as CCP
+end box
+participant WebhookService as WebhookService
+participant CPS as CPS
+participant MO as MO
+participant MOContractPKI as MOContractPKI
+participant CPO as CPO
+
+Actor       User as User
+
+box "OutCar"
+database    PnCサーバ as PnCサーバ
+database    SOA as SOA
+database    SVIS as SVIS
+participant App as App
+
+end box
+box "InCar"
+    participant DCM as DCM
+    participant CCU as CCU
+    participant CCU as CCU
+    participant CECU as CECU
+    participant EVCC as EVCC
+    participant 充制 as 充制
+    participant シス制 as シス制
+end box
+participant EVSE as EVSE
+
+
+
+'participant Participant as Foo
+'actor       Actor       as Foo1
+'boundary    Boundary    as Foo2
+'control     Control     as Foo3
+'entity      Entity      as Foo4
+'database    Database    as Foo5
+'collections Collections as Foo6
+'queue       Queue       as Foo7
+
+'''''''''''''''''''''''''''''''''''''''
+'独自PKIを使用するMOの場合
+'''''''''''''''''''''''''''''''''''''''
+
+'PCIDを確定させたところから
+PnCサーバ -> MO      : 充電サービス購入?(PCID送付) 
+MO -> MO            : eMAID生成
+MO -> PCP           : PCID検証[getOEMProvCert]
+PCP --> MO          : ProvisioningCert & Sub CA chain
+MO -> MO            : OEMRootに対して証明書チェーンを検証
+MO -> MO            : DHPublickKeyの生成(契約証明書秘密鍵の暗号化に使用)
+MO -> MO            : 契約証明書の秘密鍵と公開鍵のキーペア生成
+MO -> MO            : CSR(契約証明書の秘密鍵と公開鍵のキーペア,eMAID)を生成
+MO -> MOContractPKI : 署名されたCSRを送信
+MOContractPKI --> MO: MOSubCA2によって署名された証明書チェーンを含む契約証明書
+MO -> MO            : 契約証明書の秘密鍵をDHPublickeyで暗号化
+MO -> MO            : eMAID,DHPublicKey,暗号化された契約証明書の秘密鍵,証明書チェーンを含むXMLの生成
+MO -> CPS           : 契約データの作成と転送
+CPS -> CPS          : 署名済み契約書データの生成(CertificateInstallResの形に変換？)
+CPS -> CCP          : 契約データパッケージ(CertificateInstallRes)の送信
+CCP -> CCP          : 契約証明書保存
+CCP -> WebhookService   : Pool内の新規契約
+WebhookService -> PnCサーバ : Webhook event: oem.contract.created
+WebhookService -> MO : Webhook event: mo.contract.created.sent.to.oem
+
+alt sucsessful case
+    PnCサーバ -> WebhookService : HubjectPKI経由で契約データパッケージ(CertificateInstallRes)を要求
+    WebhookService -> CCP :契約データパッケージ(CertificateInstallRes)を要求
+    CCP --> PnCサーバ: 契約データパッケージ(CertificateInstallRes)送付
+    PnCサーバ -> SVIS: 契約データパッケージ(CertificateInstallRes)インストール要求
+else badrequest
+    PnCサーバ -> WebhookService : 400 bad Request
+    WebhookService -> MO : rejected.by.oem
+else OtherResponse 
+    PnCサーバ -> WebhookService : OEM Response
+    WebhookService -> MO: Queued.to.oem
+end
+
+
+
+
+アリス -> ボブ: リクエスト
+ボブ --> アリス: レスポンス
+@enduml

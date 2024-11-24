@@ -1,0 +1,42 @@
+@startuml
+title Vehicle Initialization
+'PnC登録時の動き
+
+'分類子一覧
+box "Repository"
+    database    RCP as RCP
+    database    PCP as PCP
+    database    CCP as CCP
+end box
+participant WebhookService as WebhookService
+participant CPS as CPS
+participant MO as MO
+participant MOContractPKI as MOContractPKI
+participant CPO as CPO
+
+Actor       User as User
+
+box "OutCar"
+database    PnCサーバ as PnCサーバ
+database    SOA as SOA
+database    SVIS as SVIS
+participant App as App
+
+end box
+box "InCar"
+    participant DCM as DCM
+    participant CCU as CCU
+    participant CCU as CCU
+    participant CECU as CECU
+    participant EVCC as EVCC
+    participant 充制 as 充制
+    participant シス制 as シス制
+end box
+participant EVSE as EVSE
+
+
+PnCサーバ -> CCP        : ProvideSignedContractData(eMAID,PCID,SessionID)
+CCP --> PnCサーバ       : CertificationInstallaantionResponse
+== 契約証明書インストールシーケンス ==
+
+@enduml
